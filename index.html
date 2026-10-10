@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e" id="theme-color-meta">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Sorteio de Letras</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top bar: always visible overlay -->
+    <div id="top-bar">
+      <button id="btn-sound" class="icon-btn" aria-label="Alternar som" type="button">🔊</button>
+      <button id="btn-reset" class="icon-btn" aria-label="Reiniciar" type="button">↺</button>
+    </div>
+
+    <!-- Full-screen letter area (click target) -->
+    <div id="letter-display">
+      <div id="letter">?</div>
+      <div id="countdown-display" hidden></div>
+    </div>
+
+    <!-- Drawn letters list -->
+    <div id="drawn-list-wrapper">
+      <div id="drawn-list"></div>
+    </div>
+
+    <!-- Bottom sheet -->
+    <div id="bottom-sheet">
+      <div id="sheet-handle"><span class="bar"></span></div>
+      <div id="sheet-content">
+        <h3>Configurações</h3>
+        <label class="opt-row">
+          <input type="checkbox" id="opt-repeats" checked>
+          <span>Permitir letras repetidas</span>
+        </label>
+        <label class="opt-row">
+          <input type="checkbox" id="opt-countdown">
+          <span>Habilitar contagem regressiva</span>
+        </label>
+        <label class="opt-row">
+          <span>Tempo (segundos)</span>
+          <input type="number" id="opt-seconds" value="30" min="1" max="300">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err =>
+          console.warn('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
