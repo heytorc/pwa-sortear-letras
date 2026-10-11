@@ -29,9 +29,14 @@ rsync -a --delete \
 
 cd /tmp/gh-pages-deploy
 git add -A
-git diff --cached --quiet && echo "Nothing to deploy." && exit 0
+if git diff --cached --quiet; then
+  echo "Nothing to deploy."
+  cd - >/dev/null
+  git worktree remove /tmp/gh-pages-deploy --force
+  exit 0
+fi
 git commit -m "Deploy $(date '+%Y-%m-%d %H:%M:%S')"
-git push origin gh-pages
+git push origin HEAD:gh-pages
 
 cd -
 git worktree remove /tmp/gh-pages-deploy --force
