@@ -1,18 +1,40 @@
+:root {
+  --bg: #1a1a2e;
+  --bg-strong: #12172b;
+  --panel: rgba(255, 255, 255, 0.08);
+  --panel-strong: rgba(255, 255, 255, 0.14);
+  --sheet-handle-height: 48px;
+  --text: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.82);
+  --sheet-text: #111827;
+  --muted: #6b7280;
+  --border: rgba(15, 23, 42, 0.08);
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
+  --danger: #ef4444;
+  --shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-:root {
-  --sheet-handle-height: 48px;
-}
-
 html, body {
   height: 100%;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: #1a1a2e;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input {
+  font: inherit;
 }
 
 #app {
@@ -20,9 +42,22 @@ html, body {
   inset: 0;
   height: 100vh;
   height: 100dvh;
+  background: var(--bg);
 }
 
-/* Full-screen colorful letter */
+#app-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 15;
+}
+
+#app-overlay[hidden] {
+  display: none;
+}
+
 #letter-display {
   position: fixed;
   inset: 0;
@@ -30,90 +65,112 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #1a1a2e;
-  transition: background-color 0.4s ease;
+  background-color: var(--bg);
+  transition: background-color 0.35s ease;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+  z-index: 1;
 }
 
 #letter {
   font-size: min(55vw, 55vh);
   font-weight: 900;
-  color: white;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   line-height: 1;
+  color: var(--text);
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
 }
 
 #countdown-display {
-  font-size: min(20vw, 20vh);
-  font-weight: 700;
+  font-size: min(18vw, 18vh);
+  font-weight: 800;
+  line-height: 1;
   color: rgba(255, 255, 255, 0.9);
   margin-top: 8px;
-  line-height: 1;
 }
 
-/* Top bar: transparent overlay */
 #top-bar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10;
+  z-index: 12;
   display: flex;
   justify-content: space-between;
-  padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
+  align-items: center;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   pointer-events: none;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
 }
 
 .icon-btn {
   pointer-events: auto;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.18);
-  color: white;
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: background 0.2s ease, transform 0.1s ease;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.18);
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .icon-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
 }
 
 .icon-btn.muted {
   opacity: 0.55;
 }
 
-/* Drawn list: fixed above bottom sheet */
 #drawn-list-wrapper {
   position: fixed;
-  bottom: var(--sheet-handle-height);
   left: 0;
   right: 0;
+  bottom: calc(var(--sheet-handle-height) + 8px);
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
   padding: 8px 12px;
-  z-index: 5;
+  z-index: 4;
   scrollbar-width: none;
 }
 
 #drawn-list-wrapper::-webkit-scrollbar {
   display: none;
+}
+
+#drawn-list {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .drawn-chip {
@@ -125,25 +182,25 @@ html, body {
   border-radius: 50%;
   font-weight: 700;
   color: white;
-  margin-right: 6px;
-  font-size: 16px;
+  font-size: 15px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+  border: 3px solid rgba(255,255,255,.50);
 }
 
-/* Bottom sheet */
 #bottom-sheet {
   position: fixed;
-  bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-radius: 20px 20px 0 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24px 24px 0 0;
+  box-shadow: var(--shadow);
   transform: translateY(calc(100% - var(--sheet-handle-height)));
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.2, 1);
   z-index: 20;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  color: var(--sheet-text);
 }
 
 #bottom-sheet.open {
@@ -155,30 +212,37 @@ html, body {
 }
 
 #sheet-handle {
-  height: var(--sheet-handle-height);
   display: flex;
   align-items: center;
   justify-content: center;
+  height: var(--sheet-handle-height);
+  width: 100%;
   cursor: pointer;
   touch-action: none;
 }
 
 .bar {
-  width: 40px;
+  width: 42px;
   height: 4px;
-  border-radius: 2px;
-  background: #ccc;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.25);
 }
 
 #sheet-content {
-  padding: 0 24px 28px;
-  color: #1a1a2e;
+  padding: 0 22px 18px;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 #sheet-content h3 {
-  font-size: 18px;
-  margin-bottom: 18px;
+  font-size: 1.15rem;
   font-weight: 700;
+  color: var(--sheet-text);
 }
 
 .opt-row {
@@ -186,9 +250,9 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 12px 0;
-  font-size: 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--sheet-text);
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
 }
 
 .opt-row:last-child {
@@ -200,24 +264,86 @@ html, body {
 }
 
 .opt-row input[type="checkbox"] {
-  width: 22px;
-  height: 22px;
-  accent-color: #7b2ff7;
-  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
 .opt-row input[type="number"] {
-  width: 80px;
+  width: 82px;
   padding: 8px 10px;
-  font-size: 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(17, 24, 39, 0.03);
   text-align: center;
-  flex: 0 0 auto;
+  color: var(--sheet-text);
 }
 
-/* Landing pulse animation on the letter */
+.dialog {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  padding: 24px;
+}
+
+.dialog[hidden] {
+  display: none;
+}
+
+.dialog-card {
+  width: min(100%, 360px);
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  color: var(--sheet-text);
+  padding: 22px 18px 18px;
+}
+
+.dialog-card h3 {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.dialog-card p {
+  color: rgba(17, 24, 39, 0.7);
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn {
+  min-width: 112px;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: rgba(17, 24, 39, 0.06);
+  color: var(--sheet-text);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
 @keyframes land-pop {
   0% { transform: scale(1); }
   40% { transform: scale(1.12); }
@@ -225,5 +351,5 @@ html, body {
 }
 
 #letter.landed {
-  animation: land-pop 0.4s ease;
+  animation: land-pop 0.35s ease;
 }

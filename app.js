@@ -6,22 +6,33 @@ const DEFAULT_BG = '#1a1a2e';
 
 const state = {
   drawn: [],
-  allowRepeats: true,
-  countdownEnabled: false,
-  countdownSeconds: 30,
+  allowRepeats: false,
+  countdownEnabled: true,
+  countdownSeconds: 10,
   soundEnabled: true,
   isAnimating: false,
   countdownTimer: null,
+  sheetOpen: false,
+  resetDialogOpen: false,
 };
 
-// Parallel array: color assigned to each drawn letter
 let chipColors = [];
+let audioCtx = null;
 
-// ---- DOM refs ----
-let elLetterDisplay, elLetter, elCountdown, elDrawnList, elSheet,
-    elThemeMeta, elBtnSound;
+let elLetterDisplay,
+    elLetter,
+    elCountdown,
+    elDrawnList,
+    elSheet,
+    elThemeMeta,
+    elBtnSound,
+    elBtnSettings,
+    elBtnReset,
+    elAppOverlay,
+    elResetDialog,
+    elResetCancel,
+    elResetConfirm;
 
-// ---- Color ----
 function randomColor() {
   const hue = Math.floor(Math.random() * 360);
   return `hsl(${hue}, 68%, 46%)`;
@@ -29,7 +40,6 @@ function randomColor() {
 
 function setBackground(color) {
   elLetterDisplay.style.backgroundColor = color;
-  // Update browser chrome color. For hsl() we keep the meta in sync via computed style.
   elThemeMeta.setAttribute('content', color);
 }
 
@@ -37,29 +47,33 @@ function setLetter(ch) {
   elLetter.textContent = ch;
 }
 
-// ---- Audio (Web Audio API, no files) ----
-let audioCtx = null;
 function getAudioCtx() {
   audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-// progress: 0=fast/start, 1=slow/about-to-land
 function playTick(progress = 0) {
   if (!state.soundEnabled) return;
   try {
     const ctx = getAudioCtx();
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator(), gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
     osc.type = 'triangle';
-    const freq = 500 + progress * 600; // 500→1100 Hz as it slows
+    const freq = 500 + progress * 600;
     osc.frequency.setValueAtTime(freq, now);
     osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.055);
+
     gain.gain.setValueAtTime(0.22, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 0.065);
-    osc.start(now); osc.stop(now + 0.07);
+
+    osc.start(now);
+    osc.stop(now + 0.07);
   } catch (_) {}
 }
 
@@ -69,54 +83,82 @@ function playLanding() {
     const ctx = getAudioCtx();
     const now = ctx.currentTime;
     [440, 880].forEach((freq, i) => {
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
       osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.25 - i * 0.08, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-      osc.start(now); osc.stop(now + 0.5);
+      osc.start(now);
+      osc.stop(now + 0.5);
     });
   } catch (_) {}
 }
 
-// ---- Draw animation (power-eased slot machine) ----
-const STEPS = 22;      // total tick count
-const MIN_DELAY = 45, MAX_DELAY = 420; // ms
+function playCountdownBell() {
+  if (!state.soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(660, now + 0.22);
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+    osc.start(now);
+    osc.stop(now + 0.3);
+  } catch (_) {}
+}
+
+const STEPS = 22;
+const MIN_DELAY = 45;
+const MAX_DELAY = 420;
 
 function startDraw() {
-  if (state.isAnimating) return;
+  if (state.isAnimating || state.sheetOpen || state.resetDialogOpen) return;
   stopCountdown();
 
   const pool = state.allowRepeats
     ? ALPHABET
-    : ALPHABET.filter(l => !state.drawn.includes(l));
-  if (pool.length === 0) { showAllDrawnMessage(); return; }
+    : ALPHABET.filter((letter) => !state.drawn.includes(letter));
 
-  // Target chosen BEFORE animation starts
+  if (pool.length === 0) {
+    showAllDrawnMessage();
+    return;
+  }
+
   const target = pool[Math.floor(Math.random() * pool.length)];
   state.isAnimating = true;
   elLetter.classList.remove('landed');
 
   const color = randomColor();
-  setBackground(color); // change bg immediately at draw start
+  setBackground(color);
 
-  // Power-eased delays: delay[i] = MIN * (MAX/MIN)^(i/(STEPS-2))
   const delays = Array.from({ length: STEPS - 1 }, (_, i) =>
     MIN_DELAY * Math.pow(MAX_DELAY / MIN_DELAY, i / (STEPS - 2))
   );
 
   let step = 0;
+
   function tick() {
     if (step < STEPS - 1) {
       setLetter(ALPHABET[Math.floor(Math.random() * 26)]);
-      playTick(step / (STEPS - 1)); // rising pitch progress
-      step++;
+      playTick(step / (STEPS - 1));
+      step += 1;
       setTimeout(tick, delays[step - 1]);
     } else {
       setLetter(target);
       playLanding();
-      // trigger landing pop
       void elLetter.offsetWidth;
       elLetter.classList.add('landed');
       state.drawn.push(target);
@@ -124,9 +166,10 @@ function startDraw() {
       updateDrawnList();
       saveState();
       state.isAnimating = false;
-      if (state.countdownEnabled) setTimeout(startCountdown, 200);
+      if (state.countdownEnabled) setTimeout(startCountdown, 180);
     }
   }
+
   tick();
 }
 
@@ -137,17 +180,21 @@ function showAllDrawnMessage() {
   elLetter.classList.add('landed');
 }
 
-// ---- Countdown ----
 function startCountdown() {
   stopCountdown();
+
   let remaining = state.countdownSeconds;
   elCountdown.removeAttribute('hidden');
   elCountdown.textContent = remaining;
 
   state.countdownTimer = setInterval(() => {
-    remaining--;
+    remaining -= 1;
     elCountdown.textContent = remaining;
-    if (remaining <= 0) stopCountdown();
+
+    if (remaining <= 0) {
+      playCountdownBell();
+      stopCountdown();
+    }
   }, 1000);
 }
 
@@ -160,22 +207,23 @@ function stopCountdown() {
   elCountdown.textContent = '';
 }
 
-// ---- Drawn list ----
 function updateDrawnList() {
   elDrawnList.innerHTML = '';
-  state.drawn.forEach((letter, i) => {
+
+  state.drawn.forEach((letter, index) => {
     const chip = document.createElement('span');
     chip.className = 'drawn-chip';
     chip.textContent = letter;
-    chip.style.background = chipColors[i] || randomColor();
+    chip.style.background = chipColors[index] || randomColor();
     elDrawnList.appendChild(chip);
   });
-  // Scroll to end
-  elDrawnList.parentElement.scrollLeft = elDrawnList.parentElement.scrollWidth;
+
+  if (elDrawnList.parentElement) {
+    elDrawnList.parentElement.scrollLeft = elDrawnList.parentElement.scrollWidth;
+  }
 }
 
-// ---- Reset ----
-function reset() {
+function resetStateSession() {
   state.drawn = [];
   chipColors = [];
   stopCountdown();
@@ -186,7 +234,38 @@ function reset() {
   saveState();
 }
 
-// ---- Persistence ----
+function openResetDialog() {
+  if (state.sheetOpen) closeSheet();
+  state.resetDialogOpen = true;
+  elResetDialog.hidden = false;
+  elAppOverlay.hidden = false;
+}
+
+function closeResetDialog() {
+  state.resetDialogOpen = false;
+  elResetDialog.hidden = true;
+  if (!state.sheetOpen) elAppOverlay.hidden = true;
+}
+
+function openSheet() {
+  state.sheetOpen = true;
+  elSheet.classList.add('open');
+  elSheet.setAttribute('aria-hidden', 'false');
+  elAppOverlay.hidden = false;
+}
+
+function closeSheet() {
+  state.sheetOpen = false;
+  elSheet.classList.remove('open');
+  elSheet.setAttribute('aria-hidden', 'true');
+  if (!state.resetDialogOpen) elAppOverlay.hidden = true;
+}
+
+function toggleSheet() {
+  if (state.sheetOpen) closeSheet();
+  else openSheet();
+}
+
 function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -214,60 +293,52 @@ function loadState() {
   } catch (_) {}
 }
 
-// ---- Sound toggle ----
+function setSoundIcon() {
+  const iconName = state.soundEnabled ? 'volume-2' : 'volume-x';
+
+  elBtnSound.innerHTML = `<i data-lucide="${iconName}"></i>`;
+  elBtnSound.classList.toggle('muted', !state.soundEnabled);
+
+  if (window.lucide) lucide.createIcons();
+}
+
 function toggleSound() {
   state.soundEnabled = !state.soundEnabled;
-  updateSoundIcon();
+  setSoundIcon();
   saveState();
 }
 
-function updateSoundIcon() {
-  elBtnSound.textContent = state.soundEnabled ? '🔊' : '🔇';
-  elBtnSound.classList.toggle('muted', !state.soundEnabled);
-}
-
-// ---- Bottom sheet (click toggle + swipe to dismiss) ----
 function initBottomSheet() {
   const handle = document.getElementById('sheet-handle');
 
-  handle.addEventListener('click', (e) => {
-    // Ignore click if it was the end of a drag gesture
+  handle.addEventListener('click', (event) => {
     if (handle.dataset.dragged === 'true') {
       handle.dataset.dragged = 'false';
       return;
     }
-    elSheet.classList.toggle('open');
+    toggleSheet();
   });
 
-  let startY = 0, currentY = 0, dragging = false;
+  let startY = 0;
+  let currentY = 0;
+  let dragging = false;
 
-  const getSheetHeight = () => elSheet.getBoundingClientRect().height;
-
-  handle.addEventListener('touchstart', (e) => {
-    startY = e.touches[0].clientY;
+  handle.addEventListener('touchstart', (event) => {
+    startY = event.touches[0].clientY;
     currentY = startY;
     dragging = true;
     handle.dataset.dragged = 'false';
     elSheet.classList.add('dragging');
   }, { passive: true });
 
-  handle.addEventListener('touchmove', (e) => {
+  handle.addEventListener('touchmove', (event) => {
     if (!dragging) return;
-    currentY = e.touches[0].clientY;
+    currentY = event.touches[0].clientY;
     const delta = currentY - startY;
     if (Math.abs(delta) > 6) handle.dataset.dragged = 'true';
-    const isOpen = elSheet.classList.contains('open');
-    const height = getSheetHeight();
-    if (isOpen) {
-      // allow dragging down only
-      const y = Math.max(0, delta);
-      elSheet.style.transform = `translateY(${y}px)`;
-    } else {
-      // allow dragging up from collapsed position
-      const collapsed = height - 48;
-      const y = Math.min(collapsed, Math.max(0, collapsed + delta));
-      elSheet.style.transform = `translateY(${y}px)`;
-    }
+
+    const offset = state.sheetOpen ? Math.max(0, delta) : Math.min(0, delta);
+    elSheet.style.transform = `translateY(${offset}px)`;
   }, { passive: true });
 
   handle.addEventListener('touchend', () => {
@@ -275,17 +346,13 @@ function initBottomSheet() {
     dragging = false;
     elSheet.classList.remove('dragging');
     elSheet.style.transform = '';
+
     const delta = currentY - startY;
-    const isOpen = elSheet.classList.contains('open');
-    if (isOpen && delta > 60) {
-      elSheet.classList.remove('open');
-    } else if (!isOpen && delta < -60) {
-      elSheet.classList.add('open');
-    }
+    if (state.sheetOpen && delta > 60) closeSheet();
+    else if (!state.sheetOpen && delta < -60) openSheet();
   });
 }
 
-// ---- Init ----
 function init() {
   elLetterDisplay = document.getElementById('letter-display');
   elLetter = document.getElementById('letter');
@@ -294,39 +361,73 @@ function init() {
   elSheet = document.getElementById('bottom-sheet');
   elThemeMeta = document.getElementById('theme-color-meta');
   elBtnSound = document.getElementById('btn-sound');
+  elBtnSettings = document.getElementById('btn-settings');
+  elBtnReset = document.getElementById('btn-reset');
+  elAppOverlay = document.getElementById('app-overlay');
+  elResetDialog = document.getElementById('reset-dialog');
+  elResetCancel = document.getElementById('reset-cancel');
+  elResetConfirm = document.getElementById('reset-confirm');
 
   loadState();
 
-  // Reflect loaded settings in UI
   document.getElementById('opt-repeats').checked = state.allowRepeats;
   document.getElementById('opt-countdown').checked = state.countdownEnabled;
   document.getElementById('opt-seconds').value = state.countdownSeconds;
-  updateSoundIcon();
+
+  setSoundIcon();
   updateDrawnList();
 
-  // Main click target
-  elLetterDisplay.addEventListener('click', startDraw);
-
-  // Top bar buttons
-  elBtnSound.addEventListener('click', (e) => { e.stopPropagation(); toggleSound(); });
-  document.getElementById('btn-reset').addEventListener('click', (e) => {
-    e.stopPropagation();
-    reset();
+  elLetterDisplay.addEventListener('click', () => {
+    if (state.sheetOpen || state.resetDialogOpen || state.isAnimating) return;
+    startDraw();
   });
 
-  // Settings
-  document.getElementById('opt-repeats').addEventListener('change', (e) => {
-    state.allowRepeats = e.target.checked;
+  elBtnSound.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleSound();
+  });
+
+  elBtnSettings.addEventListener('click', (event) => {
+    event.stopPropagation();
+    toggleSheet();
+  });
+
+  elBtnReset.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openResetDialog();
+  });
+
+  elAppOverlay.addEventListener('click', () => {
+    if (state.resetDialogOpen) {
+      closeResetDialog();
+      return;
+    }
+    if (state.sheetOpen) closeSheet();
+  });
+
+  elResetCancel.addEventListener('click', () => {
+    closeResetDialog();
+  });
+
+  elResetConfirm.addEventListener('click', () => {
+    resetStateSession();
+    closeResetDialog();
+  });
+
+  document.getElementById('opt-repeats').addEventListener('change', (event) => {
+    state.allowRepeats = event.target.checked;
     saveState();
   });
-  document.getElementById('opt-countdown').addEventListener('change', (e) => {
-    state.countdownEnabled = e.target.checked;
+
+  document.getElementById('opt-countdown').addEventListener('change', (event) => {
+    state.countdownEnabled = event.target.checked;
     saveState();
   });
-  document.getElementById('opt-seconds').addEventListener('change', (e) => {
-    const v = parseInt(e.target.value, 10);
-    state.countdownSeconds = Number.isFinite(v) ? Math.min(300, Math.max(1, v)) : 30;
-    e.target.value = state.countdownSeconds;
+
+  document.getElementById('opt-seconds').addEventListener('change', (event) => {
+    const value = parseInt(event.target.value, 10);
+    state.countdownSeconds = Number.isFinite(value) ? Math.min(300, Math.max(1, value)) : 30;
+    event.target.value = state.countdownSeconds;
     saveState();
   });
 
