@@ -10,6 +10,7 @@ const state = {
   countdownEnabled: true,
   countdownSeconds: 10,
   soundEnabled: true,
+  hapticsEnabled: true,
   isAnimating: false,
   countdownTimer: null,
   sheetOpen: false,
@@ -120,6 +121,39 @@ function playCountdownBell() {
   } catch (_) {}
 }
 
+// ---- Haptics ----
+// Android/Chrome: Vibration API. iOS 17.4+ Safari: toggling a hidden <input switch> gives a tap.
+let hapticLabel = null;
+
+function iosHapticTap() {
+  if (!hapticLabel) {
+    hapticLabel = document.createElement('label');
+    hapticLabel.className = 'haptic-switch';
+    hapticLabel.setAttribute('aria-hidden', 'true');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.setAttribute('switch', '');
+    input.tabIndex = -1;
+    hapticLabel.appendChild(input);
+    document.body.appendChild(hapticLabel);
+  }
+  hapticLabel.click();
+}
+
+function haptic(kind = 'tick') {
+  if (!state.hapticsEnabled) return;
+  try {
+    if (typeof navigator.vibrate === 'function') {
+      navigator.vibrate(kind === 'landing' ? [30, 40, 60] : 8);
+    } else if (kind === 'landing') {
+      iosHapticTap();
+      setTimeout(iosHapticTap, 90);
+    } else {
+      iosHapticTap();
+    }
+  } catch (_) {}
+}
+
 const STEPS = 22;
 const MIN_DELAY = 45;
 const MAX_DELAY = 420;
@@ -154,11 +188,13 @@ function startDraw() {
     if (step < STEPS - 1) {
       setLetter(ALPHABET[Math.floor(Math.random() * 26)]);
       playTick(step / (STEPS - 1));
+      haptic('tick');
       step += 1;
       setTimeout(tick, delays[step - 1]);
     } else {
       setLetter(target);
       playLanding();
+      haptic('landing');
       void elLetter.offsetWidth;
       elLetter.classList.add('landed');
       state.drawn.push(target);
@@ -275,6 +311,7 @@ function saveState() {
       countdownEnabled: state.countdownEnabled,
       countdownSeconds: state.countdownSeconds,
       soundEnabled: state.soundEnabled,
+      hapticsEnabled: state.hapticsEnabled,
     }));
   } catch (_) {}
 }
@@ -290,6 +327,7 @@ function loadState() {
     state.countdownEnabled = saved.countdownEnabled ?? false;
     state.countdownSeconds = saved.countdownSeconds ?? 30;
     state.soundEnabled = saved.soundEnabled ?? true;
+    state.hapticsEnabled = saved.hapticsEnabled ?? true;
   } catch (_) {}
 }
 
@@ -373,6 +411,7 @@ function init() {
   document.getElementById('opt-repeats').checked = state.allowRepeats;
   document.getElementById('opt-countdown').checked = state.countdownEnabled;
   document.getElementById('opt-seconds').value = state.countdownSeconds;
+  document.getElementById('opt-haptics').checked = state.hapticsEnabled;
 
   setSoundIcon();
   updateDrawnList();
@@ -422,6 +461,12 @@ function init() {
   document.getElementById('opt-countdown').addEventListener('change', (event) => {
     state.countdownEnabled = event.target.checked;
     saveState();
+  });
+
+  document.getElementById('opt-haptics').addEventListener('change', (event) => {
+    state.hapticsEnabled = event.target.checked;
+    saveState();
+    if (state.hapticsEnabled) haptic('landing');
   });
 
   document.getElementById('opt-seconds').addEventListener('change', (event) => {

@@ -344,6 +344,17 @@ button, input {
   color: white;
 }
 
+.haptic-switch {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 @keyframes land-pop {
   0% { transform: scale(1); }
   40% { transform: scale(1.12); }
