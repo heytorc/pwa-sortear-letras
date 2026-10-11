@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e" id="theme-color-meta">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sorteio de Letras">
+  <meta name="description" content="Sorteador de letras para escolhas rápidas em grupo e atividades escolares.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Sorteio de Letras">
+  <meta property="og:description" content="Decida em um toque com um app leve e rápido para iPhone.">
+  <meta property="og:image" content="icons/social-share.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sorteio de Letras">
+  <meta name="twitter:description" content="Decida em um toque com um app leve e rápido para iPhone.">
+  <meta name="twitter:image" content="icons/social-share.png">
+  <title>Sorteio de Letras</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="app-overlay" hidden></div>
+
+    <div id="top-bar">
+      <button id="btn-settings" class="icon-btn" aria-label="Configurações" type="button">
+        <i data-lucide="menu"></i>
+      </button>
+
+      <div class="top-actions">
+        <button id="btn-sound" class="icon-btn" aria-label="Alternar som" type="button"></button>
+        <button id="btn-reset" class="icon-btn" aria-label="Reiniciar" type="button">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="letter-display">
+      <div id="letter">?</div>
+      <div id="countdown-display" hidden></div>
+    </div>
+
+    <div id="drawn-list-wrapper">
+      <div id="drawn-list"></div>
+    </div>
+
+    <div id="bottom-sheet" aria-hidden="true">
+      <div id="sheet-handle" aria-label="Abrir configurações">
+        <span class="bar"></span>
+      </div>
+      <div id="sheet-content">
+        <div class="sheet-header">
+          <h3>Configurações</h3>
+        </div>
+
+        <label class="opt-row">
+          <input type="checkbox" id="opt-repeats" checked>
+          <span>Permitir letras repetidas</span>
+        </label>
+        <label class="opt-row">
+          <input type="checkbox" id="opt-countdown">
+          <span>Habilitar contagem regressiva</span>
+        </label>
+        <label class="opt-row">
+          <span>Tempo (segundos)</span>
+          <input type="number" id="opt-seconds" value="30" min="1" max="300">
+        </label>
+      </div>
+    </div>
+
+    <div id="reset-dialog" class="dialog" hidden>
+      <div class="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <h3 id="dialog-title">Reiniciar sessão?</h3>
+        <p>Isso limpará a lista de letras já sorteadas.</p>
+
+        <div class="dialog-actions">
+          <button id="reset-cancel" class="btn btn-secondary" type="button">Cancelar</button>
+          <button id="reset-confirm" class="btn btn-danger" type="button">Reiniciar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+  <script src="app.js"></script>
+  <script>    
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((err) => {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
